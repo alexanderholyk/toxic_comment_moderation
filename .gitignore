@@ -1,0 +1,81 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environment
+.venv/
+env/
+venv/
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Logs & local databases
+*.log
+*.sqlite3
+*.db
+
+# Unit test / coverage reports
+.coverage
+.coverage.*
+.cache
+pytest_cache/
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+
+# Jupyter / IPython
+.ipynb_checkpoints
+*.ipynb
+*.ipynb_convert
+
+# VS Code / IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Environment variables
+.env
+.env.*
+*.env
+
+# AWS / credentials
+*.pem
+*.key
+*.crt
+*.csr
+*.der
+
+# # Data (ignore large raw datasets if not needed in repo)
+# data/*.csv
+# !data/README.md   # keep a placeholder readme in data
+
+# I'm choosing to include the data here for convenience, although in other
+# situations it might be better to ignore it.
+
+# Docker
+*.pid
+*.seed
+docker-compose.override.yml
+
+# Mac / Linux / Windows system files
+.DS_Store
+Thumbs.db
+desktop.ini
