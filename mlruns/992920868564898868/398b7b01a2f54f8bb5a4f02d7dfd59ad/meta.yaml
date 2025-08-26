@@ -1,0 +1,15 @@
+artifact_uri: file:///Users/alexanderholyk/Documents/Study/_ML_Ops/comment_moderation/mlruns/992920868564898868/398b7b01a2f54f8bb5a4f02d7dfd59ad/artifacts
+end_time: 1756250073670
+entry_point_name: ''
+experiment_id: '992920868564898868'
+lifecycle_stage: active
+run_id: 398b7b01a2f54f8bb5a4f02d7dfd59ad
+run_name: selective-kite-639
+run_uuid: 398b7b01a2f54f8bb5a4f02d7dfd59ad
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1756250059633
+status: 3
+tags: []
+user_id: alexanderholyk

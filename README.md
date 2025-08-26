@@ -26,6 +26,19 @@ This is a multi-component application that includes the following, all deployed 
 
 - Choose a dataset and train a baseline machine learning model.
 
+Here we use the file src/training/train.py. To test this file from the repo root, run:
+`
+pip install -r requirements.txt
+export MLFLOW_TRACKING_URI="file:$(pwd)/mlruns"
+python -m src.training.train \
+  --train_csv data/train.csv \
+  --experiment toxicity-baselines \
+  --registered_model_name toxic-comment \
+  --max_features 50000
+  `
+
+This should print F1 scores to the console.
+
 #### 1.2. Experiment Tracking:
 
 - Integrate an experiment tracking tool like MLflow or Weights & Biases.
@@ -130,7 +143,16 @@ This is a multi-component application that includes the following, all deployed 
 
 
 
+
+
+
 --------------------------------------------------------------------
+
+
+
+
+
+
 ## Full Assignment Text:
 
 ### Final Course Project: Building a Production-Grade MLOps System

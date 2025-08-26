@@ -1,0 +1,14 @@
+aliases: []
+creation_timestamp: 1756250073556
+current_stage: None
+description: null
+last_updated_timestamp: 1756250073556
+name: toxic-comment
+run_id: 398b7b01a2f54f8bb5a4f02d7dfd59ad
+run_link: null
+source: file:///Users/alexanderholyk/Documents/Study/_ML_Ops/comment_moderation/mlruns/992920868564898868/398b7b01a2f54f8bb5a4f02d7dfd59ad/artifacts/model
+status: READY
+status_message: null
+storage_location: file:///Users/alexanderholyk/Documents/Study/_ML_Ops/comment_moderation/mlruns/992920868564898868/398b7b01a2f54f8bb5a4f02d7dfd59ad/artifacts/model
+user_id: null
+version: 1

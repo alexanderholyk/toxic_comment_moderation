@@ -1,3 +1,9 @@
+# train.py
+
+# load train.csv, splits into train/test sets, 
+# builds TF-IDF + Logistic Regression pipeline,
+# and logs parameters, metrics, and model artifacts into MLflow
+
 import os, json, argparse, time
 import mlflow
 import mlflow.sklearn

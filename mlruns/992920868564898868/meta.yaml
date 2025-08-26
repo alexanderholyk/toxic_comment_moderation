@@ -1,0 +1,6 @@
+artifact_location: file:///Users/alexanderholyk/Documents/Study/_ML_Ops/comment_moderation/mlruns/992920868564898868
+creation_time: 1756250059150
+experiment_id: '992920868564898868'
+last_update_time: 1756250059150
+lifecycle_stage: active
+name: toxicity-baselines
