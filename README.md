@@ -90,9 +90,13 @@ To test via Postman, make sure the API is running. Open Postman, set the request
 and click Send. You should see a JSON response like:
 
 {
+
   "status": "ok",
+
   "model": "toxic-comment",
+
   "model_version": "v2"
+
 }
 
 To test the /predict endpoint, change request type to POST and set the URL to:
@@ -102,22 +106,35 @@ To test the /predict endpoint, change request type to POST and set the URL to:
 Under the Body tab, choose JSON from the dropdown and paste:
 
 {
+
   "comment_text": "You are disgusting."
+
 }
 
 ... or another comment to test if you like. After clicking Send, you should see output like:
 
 {
+
   "labels": ["toxic","insult"],
+
   "scores": {
+
     "toxic": 0.82,
+
     "severe_toxic": 0.07,
+
     "obscene": 0.18,
+
     "threat": 0.01,
+
     "insult": 0.56,
+
     "identity_hate": 0.03
+
   },
+
   "model_version": "v2"
+
 }
 
 #### 2.2. Cloud Database:
@@ -129,6 +146,12 @@ Under the Body tab, choose JSON from the dropdown and paste:
   - NoSQL Option: Amazon DynamoDB.
 
 - Your FastAPI service must connect to this database to log every prediction request, its output, and a timestamp. This will be used for monitoring. Your FastAPI service can also cache some predictions to avoid making predictions on frequent requests. E.g., store recommendations for frequent users to DynamoDB and pull recommendations from the store if they already exist for a user.
+
+Here we choose SQL on AWS RDS, with PostgreSQL.
+
+As a student, I log into AWS Academy's sandbox. I click Start Lab and AWS to get to the console. Go to Aurora and RDS, and Create a database.
+
+Choose Standard create, PostgreSQL, and leave it at the default engine. Choose the Sandbox Template, which leaves you with Single-AZ DB instance deployment. I chose moderation-pg for DB instance identifier, mod_user for Master username. For Master password, I'm choosing this_is_my_password (this information is not private or sensitive, but I will store this password in .env). I leave the default Instance configuration at db.t4g.micro. I'm leaving most Storage and Connectivity settings at their defaults, but changing Public access to Yes to keep my options open for later. The rest of the settings stay default. Click Create database, and wait for status to read Available. Copy the endpoint from the console.
 
 ### Phase 3: Frontend and Live Monitoring
 

@@ -5,6 +5,9 @@ from src.api.db import log_prediction, fetch_cached
 from src.utils.hashing import text_hash
 import numpy as np
 import wandb
+import logging
+
+logger = logging.getLogger(__name__)
 
 LABELS = ["toxic","severe_toxic","obscene","threat","insult","identity_hate"]
 
@@ -30,9 +33,11 @@ MODEL_VERSION = wandb.Api().artifact(PROD_SPEC).version
 
 app = FastAPI(title="Toxic Moderation API", version="1.0")
 
+
 @app.get("/health")
 def health():
     return {"status":"ok", "model": MODEL_NAME, "version": MODEL_VERSION}
+
 
 @app.post("/predict", response_model=PredictResponse)
 def predict(req: PredictRequest):
@@ -53,5 +58,14 @@ def predict(req: PredictRequest):
     labels = [lab for lab, s in scores.items() if s >= 0.5]
     latency_ms = int((time.time() - t0)*1000)
 
-    log_prediction(req.comment_text, ih, scores, labels, MODEL_NAME, str(MODEL_VERSION), latency_ms)
-    return PredictResponse(labels=labels, scores=scores, model_version=str(MODEL_VERSION))
+    req_id = "unlogged"
+    try:
+        req_id = log_prediction(
+            req.comment_text, ih, scores, labels, MODEL_NAME, str(MODEL_VERSION), latency_ms
+        )
+    except Exception:
+        logger.exception("DB logging failed")
+
+    return PredictResponse(
+        labels=labels, scores=scores, model_version=str(MODEL_VERSION), request_id=req_id
+    )
