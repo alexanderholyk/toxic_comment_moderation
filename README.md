@@ -71,6 +71,55 @@ See the models at https://wandb.ai/alexholyk-personal/toxic-moderation/artifacts
 
 - Implement at least a /predict endpoint and a /health check endpoint.
 
+For testing the API in the command line, run:
+
+`uvicorn src.api.main:app --reload --port 8000`
+
+You can run smoke tests by opening another terminal window and running:
+
+`curl -s http://127.0.0.1:8000/health | jq`
+
+...and...
+
+`curl -s -X POST http://127.0.0.1:8000/predict -H "Content-Type: application/json" -d '{"comment_text": "You are disgusting."}' | jq`
+
+To test via Postman, make sure the API is running. Open Postman, set the request type dropdown to GET, and in the URL bar, enter:
+
+`http://127.0.0.1:8000/health`
+
+and click Send. You should see a JSON response like:
+
+{
+  "status": "ok",
+  "model": "toxic-comment",
+  "model_version": "v2"
+}
+
+To test the /predict endpoint, change request type to POST and set the URL to:
+
+`http://127.0.0.1:8000/predict`
+
+Under the Body tab, choose JSON from the dropdown and paste:
+
+{
+  "comment_text": "You are disgusting."
+}
+
+... or another comment to test if you like. After clicking Send, you should see output like:
+
+{
+  "labels": ["toxic","insult"],
+  "scores": {
+    "toxic": 0.82,
+    "severe_toxic": 0.07,
+    "obscene": 0.18,
+    "threat": 0.01,
+    "insult": 0.56,
+    "identity_hate": 0.03
+  },
+  "model_version": "v2"
+}
+
 #### 2.2. Cloud Database:
 
 - Choose and set up a managed database on AWS.
