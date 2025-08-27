@@ -305,7 +305,17 @@ Some steps to create a pull request:
 
 `git checkout -b feature/ci-workflow`
 
-Make a small change, like to the README.md. Stage it, commit it, and push it.
+Make a small change, like to the README.md. Stage it, commit it, and push it. Find the banner on github for the PR, deal with any errors in the checks, and merge that pull request. Back locally:
+
+`git checkout main`
+
+`git pull origin main`
+
+`git branch -d feature/ci-workflow`
+
+`git push origin --delete feature/ci-workflow`
+
+And you've pruned away the extra branch.
 
 ### Phase 5: Containerization and Deployment
 
