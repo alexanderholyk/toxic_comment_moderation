@@ -151,7 +151,78 @@ Here we choose SQL on AWS RDS, with PostgreSQL.
 
 As a student, I log into AWS Academy's sandbox. I click Start Lab and AWS to get to the console. Go to Aurora and RDS, and Create a database.
 
-Choose Standard create, PostgreSQL, and leave it at the default engine. Choose the Sandbox Template, which leaves you with Single-AZ DB instance deployment. I chose moderation-pg for DB instance identifier, mod_user for Master username. For Master password, I'm choosing this_is_my_password (this information is not private or sensitive, but I will store this password in .env). I leave the default Instance configuration at db.t4g.micro. I'm leaving most Storage and Connectivity settings at their defaults, but changing Public access to Yes to keep my options open for later. The rest of the settings stay default. Click Create database, and wait for status to read Available. Copy the endpoint from the console.
+Choose Standard create, PostgreSQL, and leave it at the default engine. Choose the Sandbox Template, which leaves you with Single-AZ DB instance deployment. I chose moderation-pg for DB instance identifier, mod_user for Master username. For Master password, I'm choosing this_is_my_password (this information is not private or sensitive, but I will store this password in .env). I leave the default Instance configuration at db.t4g.micro. I'm leaving most Storage and Connectivity settings at their defaults, but changing Public access to Yes to keep my options open for later. The rest of the settings stay default, except add a Security Group Inbound rule with Type PostgreSQL, Port 5432, and Source My IP.
+
+Click Create database, and wait for status to read Available. Copy the endpoint from the console. Include it in .env like so:
+
+APP_DB_URL=postgresql+psycopg2://mod_user:this_is_my_password@<endpoint_text>:5432/moderation
+
+The moderation database isn't yet created. In the terminal use the command:
+
+psql "postgresql://mod_user:this_is_my_password@moderation-pg.c6jskwc2m750.us-east-1.rds.amazonaws.com:5432/postgres"
+
+(If postreSQL isn't installed:
+
+brew install libpq
+brew link --force libpq)
+
+Then inside psql:
+
+CREATE DATABASE moderation;
+\c moderation
+
+Then create the tables and indexes:
+
+CREATE TABLE IF NOT EXISTS prediction_logs (
+  id BIGSERIAL PRIMARY KEY,
+  request_id UUID NOT NULL,
+  comment_text TEXT NOT NULL,
+  input_hash CHAR(64) NOT NULL,
+  scores JSONB NOT NULL,
+  labels TEXT[] NOT NULL,
+  model_name TEXT NOT NULL,
+  model_version TEXT NOT NULL,
+  latency_ms INTEGER NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_prediction_logs_created_at ON prediction_logs(created_at);
+CREATE INDEX IF NOT EXISTS idx_prediction_logs_input_hash ON prediction_logs(input_hash);
+
+CREATE TABLE IF NOT EXISTS feedback (
+  id BIGSERIAL PRIMARY KEY,
+  request_id UUID NOT NULL REFERENCES prediction_logs(request_id) ON DELETE CASCADE,
+  correct BOOLEAN NOT NULL,
+  true_labels TEXT[] NULL,
+  notes TEXT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+This led to ERROR:  there is no unique constraint matching given keys for referenced table "prediction_logs", which I fixed with:
+
+-- add a UNIQUE on request_id
+ALTER TABLE prediction_logs
+  ADD CONSTRAINT uq_prediction_logs_request UNIQUE (request_id);
+
+-- Now create feedback referencing that unique column
+CREATE TABLE IF NOT EXISTS feedback (
+  id BIGSERIAL PRIMARY KEY,
+  request_id UUID NOT NULL REFERENCES prediction_logs(request_id) ON DELETE CASCADE,
+  correct BOOLEAN NOT NULL,
+  true_labels TEXT[] NULL,
+  notes TEXT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+Use \quit to get out of psql. Restart the server:
+
+`uvicorn src.api.main:app --reload --port 8000`
+
+Take it for a test run with some smoke tests:
+
+`curl -s http://localhost:8000/health | jq`
+
+`curl -s -X POST http://localhost:8000/predict -H "Content-Type: application/json" -d '{"comment_text":"You are disgusting."}' | jq`
+
 
 ### Phase 3: Frontend and Live Monitoring
 
@@ -164,6 +235,23 @@ Choose Standard create, PostgreSQL, and leave it at the default engine. Choose t
   - Option B (Advanced): A React-based interface.
 
 - The frontend should allow a user to send data to your FastAPI backend and see the model's prediction.
+
+Here we implement a Streamlit dashboard. First make sure the backend is up:
+
+`uvicorn src.api.main:app --reload --port 8000`
+
+Then start the streamlit interface:
+
+`streamlit run streamlit_app/app.py`
+
+In this interface, you can enter a test comment, and adjust the decision threshold (which defaults to 0.5). It gives a bar graph showing the confidence for each label and mark the result correct or incorrect. If incorrect, you can adjust the correct labels and submit the correction, which will be logged. To check this log, you can run a query:
+
+`psql "postgresql://mod_user:this_is_my_password@moderation-pg.c6jskwc2m750.us-east-1.rds.amazonaws.com:5432/moderation" -c "SELECT id, request_id, correct, true_labels, notes, created_at FROM feedback ORDER BY created_at DESC LIMIT 5;"`
+
+You can cross-check which prediction the feedback refers to with:
+
+`psql "postgresql://mod_user:this_is_my_password@moderation-pg.c6jskwc2m750.us-east-1.rds.amazonaws.com:5432/moderation" -c "SELECT request_id, comment_text, labels, created_at FROM prediction_logs WHERE request_id IN (SELECT request_id FROM feedback ORDER BY created_at DESC LIMIT 5);"`
+
 
 #### 3.2. Model Monitoring Dashboard:
 
