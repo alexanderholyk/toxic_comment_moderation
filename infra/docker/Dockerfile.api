@@ -1,28 +1,33 @@
-# infra/docker/Dockerfile.api
-
+# syntax=docker/dockerfile:1
 FROM python:3.12-slim
 
-# Prevent Python from writing .pyc files and buffering stdout/stderr
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONUNBUFFERED=1
-
-# Install system deps (psycopg2 needs libpq)
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    libpq-dev \
-    && rm -rf /var/lib/apt/lists/*
+# System deps (build + psycopg2)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential gcc git libpq-dev curl \
+ && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# Copy requirements and install
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Install python deps first for caching
+COPY pyproject.toml poetry.lock* requirements.txt* /app/
+# Support either pip or poetry; prefer pip since repo already uses it
+RUN if [ -f requirements.txt ]; then pip install --no-cache-dir -r requirements.txt; fi
 
-# Copy the application code
-COPY src ./src
+# App code
+COPY src /app/src
+COPY streamlit_app /app/streamlit_app
+COPY monitoring_app /app/monitoring_app
 
-# Expose FastAPI port
+# Expose (API)
 EXPOSE 8000
 
-# Use uvicorn as the entrypoint
+# Healthcheck
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 CMD curl -fsS http://127.0.0.1:8000/health || exit 1
+
+# Default env (override in compose)
+ENV MODEL_CACHE_DIR=/tmp/wandb_models \
+    PYTHONUNBUFFERED=1
+
+# Run API
+# Your app: src/api/main.py -> app
 CMD ["uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
