@@ -390,9 +390,35 @@ First instance:
     `docker push <yourdockerhubuser>/cm-ui:latest`
     `docker push <yourdockerhubuser>/cm-monitor:latest`
 
-    This may take a few minutes.
+    This may take a few minutes. Actually, I had to alter the commands to make it work from my mac to this linux architecture, like so:
+
+    `docker buildx build --platform linux/amd64,linux/arm64 -t alexholyk/cm-api:latest -f infra/docker/Dockerfile.api . --push`
+
+    `docker buildx build --platform linux/amd64,linux/arm64 -t alexholyk/cm-ui:latest -f infra/docker/Dockerfile.streamlit . --push`
+
+    `docker buildx build --platform linux/amd64,linux/arm64 -t alexholyk/cm-monitor:latest -f infra/docker/Dockerfile.monitor . --push`
 
     On the EC2 instance, run `docker login` and log in. 
+
+Repeat steps 1-9 for the ui and monitor EC2 instances. Then you can pull and run for each instance:
+
+# Example for cm-api instance
+
+`docker pull alexholyk/cm-api:latest`
+
+`docker run -d -p 8000:8000 --name cm-api alexholyk/cm-api:latest`
+
+# Example for cm-ui instance
+
+`docker pull alexholyk/cm-ui:latest`
+
+`docker run -d -p 8501:8501 --name cm-ui alexholyk/cm-ui:latest`
+
+# Example for cm-monitor instance
+
+`docker pull alexholyk/cm-monitor:latest`
+
+`docker run -d -p 8502:8501 --name cm-monitor alexholyk/cm-monitor:latest`
 
 #### 5.3. Documentation:
 
