@@ -79,3 +79,5 @@ docker-compose.override.yml
 .DS_Store
 Thumbs.db
 desktop.ini
+
+infra/docker/.env.dev

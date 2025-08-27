@@ -1,0 +1,46 @@
+# infra/docker/docker-compose.dev.yml
+
+services:
+  api:
+    build:
+      context: ../..                  # <- repo root
+      dockerfile: infra/docker/Dockerfile.api
+    container_name: cm-api
+    env_file:
+      - .env.dev
+    ports:
+      - "8000:8000"
+    environment:
+      # override or add here if needed
+      - UVICORN_HOST=0.0.0.0
+      - UVICORN_PORT=8000
+    depends_on: []
+
+  ui:
+    build:
+      context: ../..                  # <- repo root
+      dockerfile: infra/docker/Dockerfile.streamlit
+    container_name: cm-ui
+    env_file:
+      - .env.dev
+    ports:
+      - "8501:8501"
+    environment:
+      - API_URL=http://host.docker.internal:8000
+
+  monitor:
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile.monitor
+    container_name: cm-monitor
+    ports:
+      - "8502:8502"        # host:container (match the internal port)
+    env_file:
+      - .env.dev
+    environment:
+      MONITOR_DB_URL: ${MONITOR_DB_URL:-${APP_DB_URL}}
+      STREAMLIT_SERVER_PORT: "8502"
+      STREAMLIT_SERVER_HEADLESS: "true"
+      STREAMLIT_BROWSER_GATHER_USAGE_STATS: "false"
+    depends_on:
+      - api

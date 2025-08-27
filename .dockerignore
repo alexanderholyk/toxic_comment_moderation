@@ -18,3 +18,13 @@ wandb/
 infra/docker/.env*
 pytest_cache/
 .pytest_cache/
+
+.git
+.venv
+__pycache__
+.pytest_cache
+data/
+infra/docker/.env.dev
+*.pyc
+*.pyo
+*.DS_Store

@@ -1,6 +1,7 @@
 import os
 from typing import Sequence
 
+import numpy as np
 import pandas as pd
 import altair as alt
 import streamlit as st
@@ -17,7 +18,21 @@ if not DB_URL:
 
 st.set_page_config(page_title="Toxic Moderation – Monitoring", layout="wide")
 
+
 # --- Helpers ---
+def wilson_ci(k: np.ndarray, n: np.ndarray, z: float = 1.96):
+    """95% Wilson confidence interval for binomial proportion."""
+    n = np.asarray(n, dtype=float)
+    k = np.asarray(k, dtype=float)
+    p = np.divide(k, np.maximum(n, 1.0))
+    denom = 1 + (z**2)/n
+    center = (p + (z**2)/(2*n)) / denom
+    halfw  = (z * np.sqrt((p*(1-p) + (z**2)/(4*n)) / np.maximum(n, 1.0))) / denom
+    lo = np.clip(center - halfw, 0, 1)
+    hi = np.clip(center + halfw, 0, 1)
+    return lo, hi
+
+
 @st.cache_resource(show_spinner=False)
 def get_engine():
     return create_engine(DB_URL, pool_pre_ping=True, future=True)
@@ -237,30 +252,80 @@ else:
 # --- Feedback-derived accuracy ---
 st.subheader("Live accuracy (from /feedback)")
 overall, daily = fetch_feedback_accuracy(window, selected_versions)
+
 if overall.empty or pd.isna(overall.loc[0, "accuracy"]):
     st.info("No feedback yet in the selected window.")
 else:
     c1, c2 = st.columns(2)
     with c1:
-        st.metric("Overall accuracy (feedback)", f"{overall.loc[0,'accuracy']*100:.1f}%", help=f"N={int(overall.loc[0,'n'])}")
+        st.metric("Overall accuracy (feedback)",
+                  f"{overall.loc[0,'accuracy']*100:.1f}%",
+                  help=f"N={int(overall.loc[0,'n'])}")
     with c2:
         st.metric("Feedback count", f"{int(overall.loc[0,'n'])}")
 
     if not daily.empty:
-        daily = daily.copy()
-        daily["accuracy_pct"] = daily["accuracy"] * 100.0
-        chart = (
-            alt.Chart(daily.rename(columns={"day": "date"}))
-            .mark_line(point=True)
-            .encode(
-                x=alt.X("date:T", title="Date (UTC)"),
-                y=alt.Y("accuracy_pct:Q", title="Accuracy (%)", scale=alt.Scale(domain=[0, 100])),
-                tooltip=[
-                    alt.Tooltip("date:T", title="Date (UTC)"),
-                    alt.Tooltip("accuracy_pct:Q", title="Accuracy (%)", format=".1f"),
-                    alt.Tooltip("n:Q", title="N feedback"),
-                ],
-            )
-            .properties(height=220)
+        # Build richer time series
+        df = daily.copy()
+        df["date"] = pd.to_datetime(df["day"], utc=True)
+        # Convert daily accuracy*n -> #correct to compute CI & rolling stats
+        df["correct"] = (df["accuracy"] * df["n"]).round().astype(int)
+        # Wilson CI (95%)
+        lo, hi = wilson_ci(df["correct"].to_numpy(), df["n"].to_numpy())
+        df["acc_pct"]     = df["accuracy"] * 100.0
+        df["acc_lo_pct"]  = lo * 100.0
+        df["acc_hi_pct"]  = hi * 100.0
+        # 3-point rolling average of accuracy (nice for sparse data)
+        df = df.sort_values("date")
+        df["acc_roll_pct"] = df["acc_pct"].rolling(3, min_periods=1, center=True).mean()
+
+        # Layered Altair chart: CI band + line + points + bar counts
+        base = alt.Chart(df).properties(height=260)
+
+        band = base.mark_area(opacity=0.15).encode(
+            x=alt.X("date:T", title="Date (UTC)"),
+            y=alt.Y("acc_lo_pct:Q", title="Accuracy (%)", scale=alt.Scale(domain=[0, 100])),
+            y2="acc_hi_pct:Q",
+            tooltip=[
+                alt.Tooltip("date:T", title="Date (UTC)"),
+                alt.Tooltip("acc_lo_pct:Q", title="CI low (%)", format=".1f"),
+                alt.Tooltip("acc_hi_pct:Q", title="CI high (%)", format=".1f"),
+                alt.Tooltip("n:Q", title="N feedback"),
+            ],
         )
+
+        line = base.mark_line().encode(
+            x="date:T",
+            y=alt.Y("acc_roll_pct:Q", title="Accuracy (%)"),
+            tooltip=[
+                alt.Tooltip("date:T", title="Date (UTC)"),
+                alt.Tooltip("acc_roll_pct:Q", title="Rolling acc (%)", format=".1f"),
+                alt.Tooltip("acc_pct:Q", title="Daily acc (%)", format=".1f"),
+                alt.Tooltip("n:Q", title="N feedback"),
+            ],
+        )
+
+        pts = base.mark_point(size=45).encode(
+            x="date:T",
+            y="acc_pct:Q",
+        )
+
+        bars = base.mark_bar(opacity=0.35).encode(
+            x="date:T",
+            y=alt.Y("n:Q", title="Feedback count"),
+            tooltip=[
+                alt.Tooltip("date:T", title="Date (UTC)"),
+                alt.Tooltip("n:Q", title="N feedback"),
+            ],
+        )
+
+        chart = alt.layer(
+            band, line, pts,
+            bars.encode(color=alt.value("#888"))  # neutral bar color
+        ).resolve_scale(
+            y='independent'   # separate y-axes: Accuracy (%) and Count
+        ).properties(
+            title="Daily accuracy with 95% CI (bars = feedback count)"
+        )
+
         st.altair_chart(chart, use_container_width=True)
