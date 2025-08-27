@@ -323,6 +323,14 @@ And you've pruned away the extra branch.
 
 - Containerize your application components (e.g., one container for the FastAPI backend, one for the frontend).
 
+With the created dockerfiles and makefile, you can simply call:
+
+`make build`
+
+`make run` (to open the interface and monitoring windows)
+
+and `make clean`
+
 #### 5.2. AWS Deployment:
 
 - Deploy your containerized application to separate EC2 instances with Docker installed.
