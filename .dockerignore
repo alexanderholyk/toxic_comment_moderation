@@ -1,0 +1,20 @@
+# .dockerignore
+__pycache__/
+*.pyc
+*.pyo
+*.DS_Store
+*.egg-info
+.vscode/
+.idea/
+.venv/
+dist/
+build/
+data/
+wandb/
+.mlflow/
+*.log
+.env
+.env.*
+infra/docker/.env*
+pytest_cache/
+.pytest_cache/
