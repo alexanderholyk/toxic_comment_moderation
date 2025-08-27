@@ -1,11 +1,10 @@
 # tests/test_api.py
-import os
+
 import uuid
 import joblib
 import pytest
 import numpy as np
 import pandas as pd
-import numpy as np
 from starlette.testclient import TestClient
 from sklearn.pipeline import Pipeline
 from sklearn.feature_extraction.text import TfidfVectorizer
