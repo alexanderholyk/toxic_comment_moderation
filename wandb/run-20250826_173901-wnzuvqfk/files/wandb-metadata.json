@@ -1,0 +1,40 @@
+{
+  "os":  "macOS-15.6-arm64-arm-64bit",
+  "python":  "CPython 3.12.7",
+  "startedAt":  "2025-08-26T23:39:01.956546Z",
+  "args":  [
+    "--train_csv",
+    "data/train.csv",
+    "--max_features",
+    "50000"
+  ],
+  "program":  "-m src.training.train",
+  "git":  {
+    "remote":  "git@github.com:alexanderholyk/toxic_comment_moderation.git",
+    "commit":  "462cd76ce057265789af8cec28b5c9c651e37c4d"
+  },
+  "email":  "alexholyk@gmail.com",
+  "root":  "/Users/alexanderholyk/Documents/Study/_ML_Ops/comment_moderation",
+  "host":  "Alexanders-MacBook-Air.local",
+  "executable":  "/Users/alexanderholyk/Documents/Study/_ML_Ops/comment_moderation/.venv/bin/python",
+  "cpu_count":  10,
+  "cpu_count_logical":  10,
+  "disk":  {
+    "/":  {
+      "total":  "994662584320",
+      "used":  "199756218368"
+    }
+  },
+  "memory":  {
+    "total":  "25769803776"
+  },
+  "apple":  {
+    "name":  "Apple M4",
+    "ecpuCores":  6,
+    "pcpuCores":  4,
+    "gpuCores":  10,
+    "memoryGb":  24,
+    "ramTotalBytes":  "25769803776"
+  },
+  "writerId":  "6fju9nkxq7mzghluxzt46f37kd70chqs"
+}

@@ -22,21 +22,26 @@ This is a multi-component application that includes the following, all deployed 
 
 ### Phase 1: Experimentation and Model Management
 
+#### 0.1 Set up virtual environment
+
 #### 1.1. Model Development:
 
 - Choose a dataset and train a baseline machine learning model.
 
-Here we use the file src/training/train.py. To test this file from the repo root, run:
+Here we use the file src/training/train.py. To test this file from the repo root, first run:
 
 `pip install -r requirements.txt`
 
-`export MLFLOW_TRACKING_URI="file:$(pwd)/mlruns"`
+You'll need a .env file with variables stored, with code like:
 
-`python -m src.training.train \`
-`  --train_csv data/train.csv \`
-`  --experiment toxicity-baselines \`
-`  --registered_model_name toxic-comment \`
-`  --max_features 50000`
+export WANDB_API_KEY=xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+export WANDB_ENTITY=<wandb_username_or_team>
+export WANDB_PROJECT=toxic-moderation
+export WANDB_MODEL_NAME=toxic-comment
+
+Then to run the file, run this from the project root:
+
+`python -m src.training.train --train_csv data/train.csv --max_features 50000`
 
 This should print F1 scores to the console.
 
