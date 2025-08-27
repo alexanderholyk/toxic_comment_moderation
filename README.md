@@ -297,6 +297,16 @@ Call `pytest -q` from the home directory to verify this.
 
 - It must run a linter (e.g., flake8 or ruff) and execute your full test suite (pytest). A pull request cannot be merged if these checks fail.
 
+Some steps to create a pull request:
+
+`git checkout main`
+
+`git pull origin main`
+
+`git checkout -b feature/ci-workflow`
+
+Make a small change, like to the README.md. Stage it, commit it, and push it.
+
 ### Phase 5: Containerization and Deployment
 
 #### 5.1. Docker Packaging:
