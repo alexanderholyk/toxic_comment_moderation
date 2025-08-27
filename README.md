@@ -335,25 +335,69 @@ and `make clean`
 
 - Deploy your containerized application to separate EC2 instances with Docker installed.
 
+First instance:
+
+1.	In AWS Console → EC2 → Launch instance.
+2.	Name: cm-api.
+3.	AMI: Ubuntu Server 24.04 LTS.
+4.	Instance type: t3.small is plenty.
+5.	Key pair: create a key pair with .pem to download the file.
+6.	Network / Security group → Create new SG:
+	•	Inbound rules:
+	•	SSH: TCP 22, Source = Your IP.
+	•	API: TCP 8000, Source = 0.0.0.0/0 (or restrict to your office IP).
+	•	Outbound: allow all.
+7.	Launch.
+8.  From the terminal, run `chmod 400 ~/Downloads/cm-key.pem` (assuming that's where your file downloaded)
+9.  From the terminal, run `ssh -i ~/Downloads/cm-key.pem ubuntu@<instance_public_ip>` (with the public ip copied from the ec2 instance site)
+10. Install Docker and git:
+
+    `sudo apt-get update`
+
+    `sudo apt-get install -y ca-certificates curl gnupg git`
+
+    `sudo install -m 0755 -d /etc/apt/keyrings`
+
+    `curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg`
+
+    `echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo $VERSION_CODENAME) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null`
+
+    `sudo apt-get update`
+
+    `sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin`
+
+    `sudo systemctl enable --now docker`
+
+    `sudo usermod -aG docker $USER`
+
+    re-load group (no logout)
+
+    `newgrp docker`
+
+    `docker --version`
+
+    From your computer run `docker login` and log in. Tag the local images for Docker Hub:
+
+    (for example, in place of <yourdockerhubuser> I put alexholyk)
+
+    `docker tag docker-api      <yourdockerhubuser>/cm-api:latest`
+    `docker tag docker-ui       <yourdockerhubuser>/cm-ui:latest`
+    `docker tag docker-monitor  <yourdockerhubuser>/cm-monitor:latest`
+
+    and then push them up:
+
+    `docker push <yourdockerhubuser>/cm-api:latest`
+    `docker push <yourdockerhubuser>/cm-ui:latest`
+    `docker push <yourdockerhubuser>/cm-monitor:latest`
+
+    This may take a few minutes.
+
+    On the EC2 instance, run `docker login` and log in. 
+
 #### 5.3. Documentation:
 
 - Create a high-quality README.md in your GitHub repository. It must be a complete guide to your project, including setup instructions, deployment steps, and example requests by user.
 
-### Problem statement & labels.
-
-### End-to-end diagram and component list.
-
-### Exact environment variables for each service.
-
-### One-liner run commands (local Docker & AWS).
-
-### MLflow dashboard URL + screenshots.
-
-### Example curl:
-
-`curl -X POST http://<api-ec2>:8000/predict \
-  -H "Content-Type: application/json" \
-  -d '{"comment_text":"You are disgusting."}'`
 
 
 
