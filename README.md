@@ -265,6 +265,20 @@ You can cross-check which prediction the feedback refers to with:
 
   - A mechanism to collect user feedback on model predictions to calculate live accuracy.
 
+  First we reconnect to the database:
+
+  `psql "postgresql://mod_user:this_is_my_password@moderation-pg.c6jskwc2m750.us-east-1.rds.amazonaws.com:5432/moderation"`
+
+  Then we add some helpful DB indexes:
+  Faster joins: feedback → prediction_logs
+  `CREATE INDEX IF NOT EXISTS idx_feedback_request_id ON feedback(request_id);`
+
+  Filter by version faster (optional)
+  `CREATE INDEX IF NOT EXISTS idx_prediction_logs_model_version ON prediction_logs(model_version);`
+
+  Optional: GIN index for labels array (useful as data grows)
+  `CREATE INDEX IF NOT EXISTS idx_prediction_logs_labels_gin ON prediction_logs USING GIN (labels);`
+
 ### Phase 4: Testing and CI/CD Automation
 
 #### 4.1. Comprehensive Testing:
