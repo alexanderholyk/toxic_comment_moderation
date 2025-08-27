@@ -39,11 +39,11 @@ export WANDB_ENTITY=<wandb_username_or_team>
 export WANDB_PROJECT=toxic-moderation
 export WANDB_MODEL_NAME=toxic-comment
 
-Then to run the file, run this from the project root:
+Then to run the file, you can run this from the project root:
 
 `python -m src.training.train --train_csv data/train.csv --max_features 50000`
 
-This should print F1 scores to the console.
+This should print F1 scores to the console. In addition, it creates a run on wandb.com. You can find my run metrics at https://wandb.ai/alexholyk-personal/toxic-moderation/runs/5g8zzk6f/overview under Summary.
 
 #### 1.2. Experiment Tracking:
 
@@ -51,11 +51,15 @@ This should print F1 scores to the console.
 
 - Log all relevant information for each training run: code version (Git commit), hyperparameters, performance metrics (e.g., accuracy, F1-score), and data versions.
 
+This was integrated into train.py as well. See hyperparameters (vectorizer.*, classifier.*, random_state, test_size), code version (git_sha), and data version (data.sha256 and data.train_csv) at https://wandb.ai/alexholyk-personal/toxic-moderation/runs/5g8zzk6f/overview under Config.
+
 #### 1.3. Model Versioning & Registry:
 
 - Save your trained models as artifacts within your experiment tracking tool.
 
 - Use the Model Registry feature to version your models. Promote your best-performing model to a "Staging" or "Production" stage.
+
+See the models at https://wandb.ai/alexholyk-personal/toxic-moderation/artifacts/.
 
 ### Phase 2: Backend API and Database Integration
 
