@@ -14,3 +14,5 @@ plotly==5.23.0
 wandb
 joblib
 altair
+pytest
+httpx

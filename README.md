@@ -287,6 +287,8 @@ You can cross-check which prediction the feedback refers to with:
 
 - Integration Tests: Write tests for your FastAPI endpoints to ensure they work as expected. Use pytest.
 
+Call `pytest -q` from the home directory to verify this.
+
 #### 4.2. CI/CD Pipeline:
 
 - Set up a GitHub Actions workflow (.github/workflows/ci.yml).

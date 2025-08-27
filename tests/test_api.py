@@ -1,94 +1,125 @@
 # tests/test_api.py
-
 import os
-import tempfile
-import importlib
-
+import uuid
+import joblib
 import pytest
-from fastapi.testclient import TestClient
+import numpy as np
+import pandas as pd
+import numpy as np
+from starlette.testclient import TestClient
+from sklearn.pipeline import Pipeline
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.linear_model import LogisticRegression
 
 
-@pytest.fixture(autouse=True)
-def _env_offline():
-    # Keep W&B offline and provide dummy identifiers so imports don't fail
-    os.environ.setdefault("WANDB_MODE", "offline")
-    os.environ.setdefault("WANDB_ENTITY", "dummy")
-    os.environ.setdefault("WANDB_PROJECT", "dummy")
-    os.environ.setdefault("WANDB_MODEL_NAME", "dummy")
-    # Provide a writable cache dir for artifact download
-    os.environ.setdefault("MODEL_CACHE_DIR", tempfile.gettempdir())
+# ---- Move DummyModel to MODULE scope so joblib can pickle it ----
+class DummyModel:
+    def __init__(self):
+        # small vectorizer so joblib load doesn't fail on attributes
+        self._pipe = Pipeline([
+            ("tfidf", TfidfVectorizer(max_features=100, ngram_range=(1, 2), min_df=1)),
+            ("clf", LogisticRegression(max_iter=10)),
+        ])
+        X = pd.Series(["ok", "great", "bad", "idiot", "disgusting"])
+        y = np.array([0, 0, 0, 1, 1])
+        # just fit to have a fitted vectorizer; clf isn’t actually used
+        self._pipe.fit(X, y)
+
+    # API under test expects either decision_function or predict_proba
+    def decision_function(self, texts):
+        out = []
+        for t in texts:
+            s = (t or "").lower()
+            arr = np.zeros(6, dtype=float)  # 6 labels
+            if any(k in s for k in ["idiot", "disgust"]):
+                arr[:] = 2.0
+            elif "bad" in s:
+                arr[:] = 0.8
+            else:
+                arr[:] = -2.0
+            out.append(arr)
+        return np.vstack(out)
 
 
-def _install_fakes(monkeypatch):
-    """
-    Install fakes for:
-      - wandb.Api().artifact(...).download() and .version
-      - joblib.load(model_path) -> returns a fake sklearn-like model
-      - DB logging functions (no real Postgres needed)
-    """
-    # --- Fake W&B API / Artifact ---
-    class _FakeArtifact:
-        def __init__(self, version="test-1"):
-            self._version = version
+# --- Fixtures ---------------------------------------------------------------
 
-        @property
-        def version(self):
-            return self._version
+@pytest.fixture(scope="session")
+def fake_artifact_dir(tmp_path_factory):
+    """Create a tiny dummy 'model.pkl' that exposes decision_function -> (n,6)."""
+    tmp = tmp_path_factory.mktemp("artifact")
+    (tmp / "model.pkl").parent.mkdir(parents=True, exist_ok=True)
+    joblib.dump(DummyModel(), tmp / "model.pkl")
+    return str(tmp)
 
-        def download(self, root=None):
-            # return an empty temp directory; joblib.load is mocked anyway
-            return tempfile.mkdtemp()
+class _FakeWandbArtifact:
+    def __init__(self, artifact_dir, version="vTEST"):
+        self._dir = artifact_dir
+        self.version = version
+    def download(self, root):
+        return self._dir
 
-    class _FakeApi:
-        def artifact(self, spec: str):
-            # spec like "entity/project/name:production"
-            return _FakeArtifact(version="test-1")
+class _FakeWandbApi:
+    def __init__(self, artifact_dir):
+        self._artifact_dir = artifact_dir
+    def artifact(self, spec):
+        return _FakeWandbArtifact(self._artifact_dir, version="vTEST")
 
-    # Patch global wandb.Api() *before* importing the API module
-    monkeypatch.setattr("wandb.Api", lambda: _FakeApi(), raising=True)
+@pytest.fixture
+def app_client(monkeypatch, fake_artifact_dir):
+    # Env the API expects
+    monkeypatch.setenv("WANDB_ENTITY", "test-entity")
+    monkeypatch.setenv("WANDB_PROJECT", "test-project")
+    monkeypatch.setenv("WANDB_MODEL_NAME", "test-model")
+    monkeypatch.setenv("MODEL_CACHE_DIR", "/tmp/wandb_models_test")
+    # disable real DB writes
+    monkeypatch.setenv("DEV_DB_SKIP", "1")
 
-    # --- Fake model object ---
-    class _FakeModel:
-        # mimic sklearn decision_function -> ndarray [n_samples, 6]
-        def decision_function(self, X):
-            import numpy as np
-            n = len(X)
-            return np.zeros((n, 6), dtype=float)
+    # Stub wandb.Api()
+    import wandb
+    monkeypatch.setattr(wandb, "Api", lambda: _FakeWandbApi(fake_artifact_dir))
 
-    # Ensure joblib.load returns our fake model regardless of file path
-    monkeypatch.setattr("joblib.load", lambda _path: _FakeModel(), raising=True)
+    # Import AFTER patching
+    from src.api.main import app
+    return TestClient(app)
 
-    # --- Stub out DB I/O used by the API ---
-    import src.api.db as db
-    monkeypatch.setattr(db, "log_prediction", lambda *a, **k: "test-request-id", raising=True)
-    monkeypatch.setattr(db, "fetch_cached", lambda *a, **k: None, raising=True)
+# --- Tests ------------------------------------------------------------------
 
-
-def test_health(monkeypatch):
-    _install_fakes(monkeypatch)
-
-    # Import after fakes are installed so startup code uses them
-    from src.api import main  # noqa: WPS433 (import inside function)
-    importlib.reload(main)    # ensure patches are in effect on re-import
-
-    client = TestClient(main.app)
-    r = client.get("/health")
+def test_health_ok(app_client):
+    r = app_client.get("/health")
     assert r.status_code == 200
-    js = r.json()
-    assert js["status"] == "ok"
-    assert "version" in js
+    body = r.json()
+    assert body["status"] == "ok"
+    assert "model" in body and "version" in body
 
-
-def test_predict_smoke(monkeypatch):
-    _install_fakes(monkeypatch)
-
-    from src.api import main  # noqa: WPS433
-    importlib.reload(main)
-
-    client = TestClient(main.app)
-    r = client.post("/predict", json={"comment_text": "You stink"})
+def test_predict_returns_scores_and_labels(app_client):
+    r = app_client.post("/predict", json={"comment_text": "You are disgusting."})
     assert r.status_code == 200
-    js = r.json()
-    assert "labels" in js and isinstance(js["labels"], list)
-    assert "scores" in js and isinstance(js["scores"], dict)
-    assert len(js["scores"]) == 6  # six toxicity labels
+    body = r.json()
+    assert "labels" in body and isinstance(body["labels"], list)
+    assert "scores" in body and isinstance(body["scores"], dict)
+    assert "model_version" in body
+
+def test_cached_path_still_logs_request_id(app_client, monkeypatch):
+    # Patch fetch_cached to simulate a cache hit for the same text hash
+    from src.api import main as api_main
+    cached = {
+        "scores": {k: 0.1 for k in ["toxic","severe_toxic","obscene","threat","insult","identity_hate"]},
+        "labels": [],
+        "model_version": str(api_main.MODEL_VERSION),
+    }
+    monkeypatch.setattr(api_main, "fetch_cached", lambda _ih: cached)
+
+    # Ensure log_prediction is called and returns a UUID
+    calls = {}
+    def _fake_log(*args, **kwargs):
+        calls["called"] = True
+        return str(uuid.uuid4())
+    monkeypatch.setattr(api_main, "log_prediction", _fake_log)
+
+    r = app_client.post("/predict", json={"comment_text": "This is fine."})
+    assert r.status_code == 200
+    body = r.json()
+    assert body["scores"] == cached["scores"]
+    assert body["labels"] == cached["labels"]
+    uuid.UUID(body["request_id"])  # valid UUID string
+    assert calls.get("called", False)
